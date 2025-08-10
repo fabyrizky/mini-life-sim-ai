@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Mini Life-Sim AI Chat</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body{font-family:Arial,sans-serif;background:#eef2f7;color:#111;margin:0;padding:0;display:flex;justify-content:center;align-items:center;height:100vh}
+    .container{background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);width:360px;max-width:90%;padding:16px;display:flex;flex-direction:column}
+    .header{font-size:1.2rem;font-weight:600;text-align:center;margin-bottom:12px}
+    .chat{flex:1;overflow-y:auto;margin-bottom:12px;border:1px solid #ddd;padding:8px;border-radius:6px;background:#f9fafb}
+    .message{margin:6px 0;padding:8px;border-radius:6px;max-width:80%}
+    .user{align-self:flex-end;background:#6b9cff;color:white}
+    .bot{align-self:flex-start;background:#e2eaf5;color:#111}
+    .controls{display:flex;gap:6px;flex-wrap:wrap}
+    .controls > *{flex:1 1 auto}
+    select,input,button{padding:8px;border-radius:4px;border:1px solid #aaa;font-size:0.9rem}
+    button{background:#6b9cff;color:#fff;border:none;cursor:pointer}
+    button:disabled{background:#ccc;cursor:default}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Mini AI Chat (OpenAI & Ollama)</div>
+    <div class="chat" id="chat"></div>
+    <textarea id="prompt" rows="2" placeholder="Ketik pesan..." style="width:100%;border:1px solid #ccc;border-radius:4px;padding:6px;margin-bottom:8px"></textarea>
+    <div class="controls">
+      <select id="modelSelect">
+        <option value="openai">OpenAI GPT</option>
+        <option value="ollama">Ollama GPT-OSS (jika ada)</option>
+      </select>
+      <button id="sendBtn">Kirim</button>
+    </div>
+  </div>
+
+  <script>
+    const chatEl = document.getElementById('chat');
+    const promptEl = document.getElementById('prompt');
+    const modelEl = document.getElementById('modelSelect');
+    const btn = document.getElementById('sendBtn');
+
+    function addMessage(text, cls) {
+      const div = document.createElement('div');
+      div.className = 'message ' + cls;
+      div.innerText = text;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    btn.addEventListener('click', async () => {
+      const text = promptEl.value.trim();
+      if (!text) return;
+      addMessage(text, 'user');
+      promptEl.value = '';
+      btn.disabled = true;
+
+      const model = modelEl.value;
+      try {
+        const resp = await fetch('/api/ai', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ model, prompt: text })
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        const botResp = data.text || data.choices?.[0]?.message?.content || '[no response]';
+        addMessage(botResp, 'bot');
+      } catch (err) {
+        addMessage('Error: ' + err.message, 'bot');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    promptEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        btn.click();
+      }
+    });
+
+    addMessage('Sim ready. Pilih model dan ajak bicara!', 'bot');
+  </script>
+</body>
+</html>
